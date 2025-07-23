@@ -1,10 +1,14 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityItem } from '../../types';
 import Card from '../shared/Card';
+import Button from '../shared/Button';
 
 interface RecentActivityFeedProps {
   activities: ActivityItem[];
+  onUpdateActivity?: (activity: ActivityItem) => void;
+  onDeleteActivity?: (id: string) => void;
+  showControls?: boolean;
 }
 
 const ActivityIcon: React.FC<{ type: ActivityItem['type'] }> = ({ type }) => {
@@ -26,32 +30,231 @@ const ActivityIcon: React.FC<{ type: ActivityItem['type'] }> = ({ type }) => {
   }
 };
 
+// Activity Item Edit Component
+const ActivityEditItem: React.FC<{
+  activity: ActivityItem;
+  onUpdate: (activity: ActivityItem) => void;
+  onDelete: (id: string) => void;
+  onCancel: () => void;
+}> = ({ activity, onUpdate, onDelete, onCancel }) => {
+  const [description, setDescription] = useState(activity.description);
+  const [type, setType] = useState(activity.type);
 
-const RecentActivityFeed: React.FC<RecentActivityFeedProps> = ({ activities }) => {
+  const handleSave = () => {
+    onUpdate({ ...activity, description, type });
+  };
+
+  const handleDelete = () => {
+    if (window.confirm('Are you sure you want to delete this activity?')) {
+      onDelete(activity.id);
+    }
+  };
+
+  const activityTypes: ActivityItem['type'][] = [
+    'Asset Created', 'Post Scheduled', 'Performance Alert', 'Phase Advanced', 
+    'AI Task', 'Brand Check', 'Data Loaded', 'Data Saved', 'Error'
+  ];
+
+  return (
+    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+      <div>
+        <label htmlFor={`activity-desc-${activity.id}`} className="block text-xs font-medium text-neutral-700 mb-1">
+          Description
+        </label>
+        <textarea
+          id={`activity-desc-${activity.id}`}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full p-2 border border-neutral-300 rounded text-sm"
+          rows={2}
+          placeholder="Activity description"
+        />
+      </div>
+      <div>
+        <label htmlFor={`activity-type-${activity.id}`} className="block text-xs font-medium text-neutral-700 mb-1">
+          Type
+        </label>
+        <select
+          id={`activity-type-${activity.id}`}
+          value={type}
+          onChange={(e) => setType(e.target.value as ActivityItem['type'])}
+          className="w-full p-2 border border-neutral-300 rounded text-sm"
+        >
+          {activityTypes.map((actType) => (
+            <option key={actType} value={actType}>{actType}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex gap-2 justify-end">
+        <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-xs">
+          Save
+        </Button>
+        <Button onClick={onCancel} className="bg-neutral-500 hover:bg-neutral-600 text-xs">
+          Cancel
+        </Button>
+        <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-xs">
+          Delete
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const RecentActivityFeed: React.FC<RecentActivityFeedProps> = ({ 
+  activities, 
+  onUpdateActivity, 
+  onDeleteActivity, 
+  showControls = false 
+}) => {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [newActivity, setNewActivity] = useState({ description: '', type: 'AI Task' as ActivityItem['type'] });
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  const handleUpdate = (updatedActivity: ActivityItem) => {
+    if (onUpdateActivity) {
+      onUpdateActivity(updatedActivity);
+      setEditingId(null);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (onDeleteActivity) {
+      onDeleteActivity(id);
+      setEditingId(null);
+    }
+  };
+
+  const handleAddNew = () => {
+    if (newActivity.description.trim() && onUpdateActivity) {
+      const activity: ActivityItem = {
+        id: Date.now().toString(),
+        description: newActivity.description,
+        type: newActivity.type,
+        timestamp: new Date()
+      };
+      onUpdateActivity(activity);
+      setNewActivity({ description: '', type: 'AI Task' });
+      setShowAddForm(false);
+    }
+  };
+
+  const activityTypes: ActivityItem['type'][] = [
+    'Asset Created', 'Post Scheduled', 'Performance Alert', 'Phase Advanced', 
+    'AI Task', 'Brand Check', 'Data Loaded', 'Data Saved', 'Error'
+  ];
+
   return (
     <Card title="Recent Activity">
-      {activities.length === 0 ? (
-        <p className="text-neutral-500">No recent activity.</p>
-      ) : (
-        <ul className="space-y-4 max-h-96 overflow-y-auto">
-          {activities.slice().reverse().map((item) => ( // Show newest first
-            <li key={item.id} className="flex items-start space-x-3 p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors">
-              <div className="flex-shrink-0 pt-0.5">
-                <ActivityIcon type={item.type} />
+      <div className="space-y-4">
+        {/* Add New Activity Form */}
+        {showControls && (
+          <div className="border-b border-neutral-200 pb-4">
+            {showAddForm ? (
+              <div className="bg-green-50 p-3 rounded-lg border border-green-200 space-y-3">
+                <h5 className="font-medium text-green-800">Add New Activity</h5>
+                <div>
+                  <label htmlFor="new-activity-desc" className="block text-xs font-medium text-neutral-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    id="new-activity-desc"
+                    value={newActivity.description}
+                    onChange={(e) => setNewActivity({ ...newActivity, description: e.target.value })}
+                    className="w-full p-2 border border-green-300 rounded text-sm"
+                    rows={2}
+                    placeholder="Enter activity description"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="new-activity-type" className="block text-xs font-medium text-neutral-700 mb-1">
+                    Type
+                  </label>
+                  <select
+                    id="new-activity-type"
+                    value={newActivity.type}
+                    onChange={(e) => setNewActivity({ ...newActivity, type: e.target.value as ActivityItem['type'] })}
+                    className="w-full p-2 border border-green-300 rounded text-sm"
+                  >
+                    {activityTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button onClick={handleAddNew} className="bg-green-600 hover:bg-green-700 text-xs">
+                    Add Activity
+                  </Button>
+                  <Button onClick={() => setShowAddForm(false)} className="bg-neutral-500 hover:bg-neutral-600 text-xs">
+                    Cancel
+                  </Button>
+                </div>
               </div>
-              <div className="flex-grow">
-                <p className="text-sm font-medium text-neutral-700">{item.description}</p>
-                <p className="text-xs text-neutral-500">
-                  {item.timestamp.toLocaleTimeString()} - {item.timestamp.toLocaleDateString()}
-                </p>
-              </div>
-              {item.link && (
-                <a href={item.link} className="text-xs text-primary hover:underline">View</a>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+            ) : (
+              <Button 
+                onClick={() => setShowAddForm(true)} 
+                className="bg-green-600 hover:bg-green-700 text-sm w-full"
+              >
+                + Add New Activity
+              </Button>
+            )}
+          </div>
+        )}
+
+        {activities.length === 0 ? (
+          <p className="text-neutral-500">No recent activity.</p>
+        ) : (
+          <ul className="space-y-4 max-h-96 overflow-y-auto">
+            {activities.slice().reverse().map((item) => (
+              <li key={item.id}>
+                {editingId === item.id ? (
+                  <ActivityEditItem
+                    activity={item}
+                    onUpdate={handleUpdate}
+                    onDelete={handleDelete}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : (
+                  <div className={`flex items-start space-x-3 p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors ${showControls ? 'border border-neutral-200' : ''}`}>
+                    <div className="flex-shrink-0 pt-0.5">
+                      <ActivityIcon type={item.type} />
+                    </div>
+                    <div className="flex-grow">
+                      <p className="text-sm font-medium text-neutral-700">{item.description}</p>
+                      <p className="text-xs text-neutral-500">
+                        {item.timestamp.toLocaleTimeString()} - {item.timestamp.toLocaleDateString()}
+                      </p>
+                      <p className="text-xs text-blue-600 font-medium">{item.type}</p>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {item.link && (
+                        <a href={item.link} className="text-xs text-primary hover:underline">View</a>
+                      )}
+                      {showControls && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => setEditingId(item.id)}
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                            title="Edit activity"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="text-xs text-red-600 hover:text-red-800"
+                            title="Delete activity"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </Card>
   );
 };

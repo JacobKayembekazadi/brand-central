@@ -246,6 +246,9 @@ const App: React.FC = () => {
                   onNextPhase={handleNextPhase}
                   addActivity={addActivity}
                   isModuleLocked={isModuleLocked}
+                  updateNorthStarMetrics={setNorthStarMetrics}
+                  updateRecentActivity={(activities) => setAppData(prev => ({ ...prev, recentActivity: activities }))}
+                  setCurrentPhase={(phaseId) => setAppData(prev => ({ ...prev, currentPhaseId: phaseId }))}
                 />
               } />
               <Route path="/world-foundry" element={
